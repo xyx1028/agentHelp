@@ -1,0 +1,221 @@
+/* 全局两栏布局：左侧会话导航，右侧聊天主区。 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  color: #1f2329;
+  background: #f5f6f7;
+}
+
+.layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* 侧栏 */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #20242b;
+  color: #e6e8eb;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sidebar-header button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sidebar-header button:hover {
+  background: #2563eb;
+}
+
+.conversation-list {
+  flex: 1;
+  margin: 0;
+  padding: 4px 8px;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.conversation-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #c9cdd4;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.conversation-list li:hover {
+  background: #2b303a;
+}
+
+.conversation-list li.active {
+  background: #374151;
+  color: #fff;
+}
+
+.conversation-list .title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.conversation-list .remove {
+  visibility: hidden;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: #8a8f99;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.conversation-list li:hover .remove {
+  visibility: visible;
+}
+
+.conversation-list .remove:hover {
+  color: #f87171;
+}
+
+.sidebar-footer {
+  padding: 12px 16px;
+  color: #8a8f99;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 聊天主区 */
+.chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-y: auto;
+}
+
+.bubble {
+  max-width: 72%;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubble.user {
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+  background: #3b82f6;
+  color: #fff;
+}
+
+.bubble.assistant {
+  margin-right: auto;
+  border: 1px solid #e5e7eb;
+  border-bottom-left-radius: 4px;
+  background: #fff;
+}
+
+.bubble.pending {
+  color: #9ca3af;
+}
+
+.memory-context {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.memory-context summary {
+  cursor: pointer;
+}
+
+.memory-context pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 输入区 */
+.composer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 32px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.composer textarea {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.composer textarea:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+.composer button {
+  align-self: flex-end;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.composer button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.composer button:not(:disabled):hover {
+  background: #2563eb;
+}

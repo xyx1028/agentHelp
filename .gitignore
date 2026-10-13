@@ -3,3 +3,5 @@
 __pycache__/
 .DS_Store
 .idea/
+web_ui/node_modules/
+web_ui/dist/

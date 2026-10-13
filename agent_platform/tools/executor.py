@@ -1,8 +1,8 @@
 """统一执行工具调用，并将失败转换为模型可见的 observation。
 
 设计要点：工具未注册、超时、抛异常都不向上抛出，而是变成文本 observation
-交还给模型，由模型向用户说明「查询失败/资料不足」——保证 LangGraph 图
-不会因单个工具的故障整体崩溃。
+交还给模型，由模型决定向用户说明查询失败，还是凭自身知识补充作答
+——保证 LangGraph 图不会因单个工具的故障整体崩溃。
 """
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -59,8 +59,8 @@ class ReadOnlyToolExecutor:
             return str(future.result(timeout=timeout_seconds))
         except TimeoutError:
             future.cancel()
-            return f"工具超时：{tool_to_call.name} 超过 {timeout_seconds} 秒，已停止等待。请说明暂时无法查询。"
+            return f"工具超时：{tool_to_call.name} 超过 {timeout_seconds} 秒，已停止等待。可说明暂时无法查询，或凭自身知识回答并说明未经工具核实。"
         except Exception as error:  # 工具错误转为模型可见的 observation，不让整张图崩溃。
-            return f"工具错误：{tool_to_call.name} 返回 {type(error).__name__}：{error}。请说明查询失败，不要编造结果。"
+            return f"工具错误：{tool_to_call.name} 返回 {type(error).__name__}：{error}。可说明查询失败，或凭自身知识回答并说明未经工具核实。"
         finally:
             executor.shutdown(wait=False, cancel_futures=True)

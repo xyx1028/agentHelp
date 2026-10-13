@@ -70,7 +70,7 @@ class KnowledgeBase:
 
     def search(self, query: str, *, top_k: int = 3) -> list[SearchResult]:
         """按中文双字词/英文词的重合度检索，并过滤弱相关的候选片段。"""
-        # 1. 查询分词；无有效词项时直接返回空，由上层提示“资料不足”。
+        # 1. 查询分词；无有效词项时直接返回空，由上层决定提示未命中或凭知识回答。
         terms = set(_extract_terms(query))
         if not terms:
             return []
