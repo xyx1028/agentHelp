@@ -1,7 +1,7 @@
-"""本地、可复现的旅行知识检索组件。
+"""本地、可复现的知识检索组件。
 
 纯内存倒排索引 RAG，不依赖网络、向量数据库或外部 embedding 服务：
-1. 启动时读取 knowledge/travel_knowledge.md，按 ``## [source-id] 标题`` 解析章节并切块；
+1. 启动时读取 knowledge/knowledge_base.md，按 ``## [source-id] 标题`` 解析章节并切块；
 2. 对中文双字词 / 英文整词建立「词项 → 片段下标」倒排索引；
 3. 查询时按词面重合度打分、过滤弱相关，取 top_k 个片段作为工具 observation。
 """
@@ -39,7 +39,7 @@ class SearchResult:
     score: float
 
 
-class TravelKnowledgeBase:
+class KnowledgeBase:
     """启动时加载 Markdown 语料，并在内存中构建只读词项索引。"""
 
     def __init__(self, source_path: Path, *, chunk_size: int = 260, max_results: int = 3):
@@ -54,13 +54,13 @@ class TravelKnowledgeBase:
         # 切块结果固化为 tuple，保证索引在运行期只读、可复现。
         self._chunks = tuple(self._load_chunks(chunk_size))
         if not self._chunks:
-            raise ValueError(f"旅行知识库没有可检索内容：{self.source_path}")
+            raise ValueError(f"知识库没有可检索内容：{self.source_path}")
         self._term_index = self._build_term_index(self._chunks)
 
     @classmethod
-    def from_default_file(cls, *, chunk_size: int = 260, max_results: int = 3) -> "TravelKnowledgeBase":
+    def from_default_file(cls, *, chunk_size: int = 260, max_results: int = 3) -> "KnowledgeBase":
         """读取项目内置语料，不依赖网络、数据库或外部 embedding 服务。"""
-        source_path = Path(__file__).resolve().parent.parent / "knowledge" / "travel_knowledge.md"
+        source_path = Path(__file__).resolve().parent.parent / "knowledge" / "knowledge_base.md"
         return cls(source_path, chunk_size=chunk_size, max_results=max_results)
 
     @property
@@ -100,7 +100,7 @@ class TravelKnowledgeBase:
     def _load_chunks(self, chunk_size: int) -> list[KnowledgeChunk]:
         """读取语料文件、解析章节，并把每节正文切成不超过 chunk_size 的片段。"""
         if not self.source_path.is_file():
-            raise FileNotFoundError(f"旅行知识库文件不存在：{self.source_path}")
+            raise FileNotFoundError(f"知识库文件不存在：{self.source_path}")
 
         sections = _parse_sections(self.source_path.read_text(encoding="utf-8"))
         chunks: list[KnowledgeChunk] = []

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from time import perf_counter
 
-from ..agent import TravelAssistantAgent
+from ..agent import AssistantAgent
 from ..config import AgentSettings
 from .fakes import create_mock_model, create_mock_tool_registry
 from .models import EvaluationCase, EvaluationExecution
@@ -25,7 +25,7 @@ class OfflineToolCaseExecutor:
         started_at = perf_counter()
         # 每个案例独立组装注册表与 Agent：互不污染，结果可复现。
         tool_registry = create_mock_tool_registry(case.scenario, self._settings)
-        turn = TravelAssistantAgent(
+        turn = AssistantAgent(
             create_mock_model(case.scenario, case.city),
             settings=self._settings,
             tool_registry=tool_registry,

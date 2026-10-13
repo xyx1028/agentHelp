@@ -8,7 +8,7 @@ knowledge_base / weather_client 为可选注入点，便于单元测试替换为
 from __future__ import annotations
 
 from ..config import AgentSettings
-from ..rag import TravelKnowledgeBase
+from ..rag import KnowledgeBase
 from ..weather import OpenMeteoWeatherClient
 from .rag import create_rag_tool
 from .registry import ToolRegistry
@@ -18,12 +18,12 @@ from .weather import create_weather_tool
 def build_default_tool_registry(
     settings: AgentSettings,
     *,
-    knowledge_base: TravelKnowledgeBase | None = None,
+    knowledge_base: KnowledgeBase | None = None,
     weather_client: OpenMeteoWeatherClient | None = None,
 ) -> ToolRegistry:
     """构造当前应用的工具集合；模型绑定、Prompt 和执行器共用同一个注册表。"""
     # 缺省时用项目内置语料/默认客户端自建，测试则注入替身。
-    knowledge_base = knowledge_base or TravelKnowledgeBase.from_default_file(
+    knowledge_base = knowledge_base or KnowledgeBase.from_default_file(
         chunk_size=settings.rag_chunk_size,
         max_results=settings.rag_top_k,
     )

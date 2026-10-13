@@ -1,6 +1,6 @@
 """Agent 编排：模型、工具注册表、记忆门面和会话状态。
 
-一轮问答的核心链路（见 TravelAssistantAgent.ask）：
+一轮问答的核心链路（见 AssistantAgent.ask）：
 按作用域加锁 → 加载短期历史 + 召回长期记忆 → LangGraph「assistant ⇄ tools」
 循环 → 写回短期窗口并提取长期记忆。模型、工具、记忆均经构造函数注入，可独立替换。
 """
@@ -32,8 +32,8 @@ class AgentTurn:
     memory_context: str = ""
 
 
-class TravelAssistantAgent:
-    """旅行助手的应用层 Agent；工具、短期记忆和长期记忆都通过可替换边界注入。"""
+class AssistantAgent:
+    """通用助手平台的应用层 Agent；工具、短期记忆和长期记忆都通过可替换边界注入。"""
 
     def __init__(
         self,

@@ -32,14 +32,14 @@ def create_mock_tool_registry(scenario: MockScenario, settings: AgentSettings) -
     if scenario in ("timeout", "error"):
 
         @tool
-        def search_travel_knowledge(query: str, top_k: int = 3) -> str:
+        def search_knowledge(query: str, top_k: int = 3) -> str:
             """用于离线验证 RAG 工具的超时和错误处理。"""
             if scenario == "timeout":
                 time.sleep(0.8)  # 超过默认 0.3s 执行超时，必然触发超时路径
                 return "不应返回此结果。"
             raise ValueError("模拟知识库不可用")
 
-        return registry.replace("search_travel_knowledge", ToolRegistration(search_travel_knowledge))
+        return registry.replace("search_knowledge", ToolRegistration(search_knowledge))
 
     if scenario == "weather":
 
@@ -73,22 +73,22 @@ def create_mock_model(scenario: MockScenario, city: str = "杭州"):
     else:
         # happy/timeout/error 场景都预置一次 RAG 检索调用，仅最终答复措辞不同。
         tool_call = {
-            "name": "search_travel_knowledge",
+            "name": "search_knowledge",
             "args": {"query": city},
             "id": "mock-call-1",
             "type": "tool_call",
         }
         if scenario == "timeout":
-            final_answer = "【模拟最终回复】证据：search_travel_knowledge 超时；因此暂时无法查询，未编造行程。"
+            final_answer = "【模拟最终回复】证据：search_knowledge 超时；因此暂时无法查询，未编造结果。"
         elif scenario == "error":
-            final_answer = "【模拟最终回复】证据：search_travel_knowledge 返回 ValueError；因此说明查询失败，未编造结果。"
+            final_answer = "【模拟最终回复】证据：search_knowledge 返回 ValueError；因此说明查询失败，未编造结果。"
         elif city in _SOURCE_IDS:
             final_answer = (
-                f"【模拟最终回复】证据：已检索“{city}”的旅行资料 {_SOURCE_IDS[city]}；"
-                "建议仅依据该资料安排路线。"
+                f"【模拟最终回复】证据：已检索“{city}”的资料 {_SOURCE_IDS[city]}；"
+                "建议仅依据该资料回答。"
             )
         else:
-            final_answer = "【模拟最终回复】证据：未检索到相关旅行资料；因此说明资料不足，未编造结果。"
+            final_answer = "【模拟最终回复】证据：未检索到相关资料；因此说明资料不足，未编造结果。"
 
     # 预置两段回复：第一段带 tool_calls 驱动图进入 tools 节点，第二段为最终答复。
     return FakeMessagesListChatModel(responses=[

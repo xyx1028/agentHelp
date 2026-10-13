@@ -1,4 +1,4 @@
-"""旅行 Agent 的应用启动入口；核心实现位于 travel_agent 包。
+"""通用 Agent 平台的应用启动入口；核心实现位于 agent_platform 包。
 
 三种运行模式：
 - 真实模式：读取 .env 中的模型配置，走完整的「模型 + 工具 + 记忆」链路；
@@ -12,15 +12,15 @@ import os
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 
-from travel_agent.agent import TravelAssistantAgent
-from travel_agent.config import AgentSettings
-from travel_agent.evaluation import create_mock_model, create_mock_tool_registry, run_evaluation
-from travel_agent.memory import AgentMemory, MemoryScope
-from travel_agent.tools import build_default_tool_registry
+from agent_platform.agent import AssistantAgent
+from agent_platform.config import AgentSettings
+from agent_platform.evaluation import create_mock_model, create_mock_tool_registry, run_evaluation
+from agent_platform.memory import AgentMemory, MemoryScope
+from agent_platform.tools import build_default_tool_registry
 
 
 def create_real_model():
-    """创建未绑定的真实模型；TravelAssistantAgent 会以 ToolRegistry 统一绑定工具。
+    """创建未绑定的真实模型；AssistantAgent 会以 ToolRegistry 统一绑定工具。
 
     模型名、API Key、Base URL 均取自 .env；temperature=0 让工具路由可复现，
     timeout/max_retries 限制模型故障时的等待时间。工具不在此处绑定，
@@ -44,7 +44,7 @@ def main():
     """启动流程：加载配置 → 解析参数 → 组装工具/模型/记忆 → 逐问题执行问答。"""
     load_dotenv()  # 从 .env 读取模型配置（该文件不进版本库）
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("question", nargs="*", default=["帮我安排杭州一天的旅行路线"])
+    parser.add_argument("question", nargs="*", default=["杭州有什么可玩的？"])  # 默认问题命中内置演示知识库，便于开箱验证 RAG 链路
     parser.add_argument("--mock", action="store_true", help="使用离线预置工具调用，无需 API Key 或网络")
     parser.add_argument("--mock-scenario", choices=["happy", "weather", "timeout", "error", "no-tool"], default="happy")
     parser.add_argument("--evaluate", action="store_true", help="运行 10 个离线工具评测样例")
@@ -75,7 +75,7 @@ def main():
         user_id=args.user_id,
         conversation_id=args.conversation_id,
     )
-    agent = TravelAssistantAgent(
+    agent = AssistantAgent(
         model,
         settings=settings,
         tool_registry=tool_registry,

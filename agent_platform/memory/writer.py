@@ -17,7 +17,7 @@ from .models import MemoryKind, MemoryRecord, MemoryScope
 
 # 只匹配“（请/帮我）记住（一下）：...”开头的整句，捕获组为冒号后的记忆内容。
 _EXPLICIT_MEMORY_PATTERN = re.compile(r"^(?:请|帮我)?记住(?:一下)?[：:,，\s]*(.+)$")
-# 命中这些词判为硬性约束（旅行中不可违反的限制）。
+# 命中这些词判为硬性约束（用户不可违反的限制）。
 _CONSTRAINT_MARKERS = ("预算", "过敏", "忌口", "不吃", "不能", "无障碍", "轮椅")
 # 命中这些词判为一般偏好（可以参考、可协商）。
 _PREFERENCE_MARKERS = ("喜欢", "偏好", "不喜欢", "不想要", "更喜欢")

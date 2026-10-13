@@ -112,7 +112,7 @@ class OpenMeteoWeatherClient:
         """发起一次 GET 请求并把响应解析为 JSON 对象；网络与解析错误统一转为 WeatherServiceError。"""
         request = Request(
             f"{base_url}?{urlencode(parameters)}",
-            headers={"Accept": "application/json", "User-Agent": "travelhelp/1.0"},
+            headers={"Accept": "application/json", "User-Agent": "agent_platform/1.0"},
         )
         try:
             with urlopen(request, timeout=self._request_timeout_seconds) as response:

@@ -14,12 +14,12 @@ alwaysApply: true
 - 必须写清三点：**模块职责 + 在整体架构中的位置 + 核心流程**（一句话或一个有序列表）。
 - 禁止只复述文件名（如 `"""工具模块。"""` 这类无信息量写法不合格）。
 
-示例（参照 travel_agent/agent.py）：
+示例（参照 agent_platform/agent.py）：
 
 ```python
 """Agent 编排：模型、工具注册表、记忆门面和会话状态。
 
-一轮问答的核心链路（见 TravelAssistantAgent.ask）：
+一轮问答的核心链路（见 AssistantAgent.ask）：
 按作用域加锁 → 加载短期历史 + 召回长期记忆 → LangGraph「assistant ⇄ tools」
 循环 → 写回短期窗口并提取长期记忆。模型、工具、记忆均经构造函数注入，可独立替换。
 """
@@ -33,7 +33,7 @@ alwaysApply: true
 - 特殊情况：LangChain `@tool` 内层函数的 docstring 是给 LLM 阅读的使用说明，
   必须写清**何时调用、传什么参数**，它直接决定模型的工具路由行为。
 
-示例（参照 travel_agent/tools/executor.py）：
+示例（参照 agent_platform/tools/executor.py）：
 
 ```python
 @staticmethod
@@ -54,7 +54,7 @@ def _call_safely(tool_to_call, arguments, timeout_seconds) -> str:
   必须在行尾注释其含义与单位。
 - 禁止无信息量注释（如 `# 加 1`、`# 循环列表`）。
 
-示例（参照 travel_agent/config.py）：
+示例（参照 agent_platform/config.py）：
 
 ```python
 tool_timeout_seconds: float = 0.3  # 所有工具的默认执行超时（秒），在执行器层生效
