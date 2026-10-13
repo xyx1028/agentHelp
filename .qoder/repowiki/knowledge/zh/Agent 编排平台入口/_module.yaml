@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: ""
+title: Agent 编排平台入口
+scope:
+    - README.md
+    - .gitignore
+    - main.py
+    - requirements.txt
+    - .env.example
+source_files: []
+depends_on: []
+related_to: []

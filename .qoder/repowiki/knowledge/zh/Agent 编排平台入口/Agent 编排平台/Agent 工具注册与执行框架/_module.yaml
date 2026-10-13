@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: agent_platform/tools
+title: Agent 工具注册与执行框架
+scope:
+    - agent_platform/tools/
+source_files: []
+depends_on: []
+related_to:
+    - path: agent_platform/evaluation

@@ -1,0 +1,74 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-10-13T08:07:03Z"
+modules:
+    "":
+        dir_name: Agent 编排平台入口
+        title: Agent 编排平台入口
+        scope:
+            - README.md
+            - .gitignore
+            - main.py
+            - requirements.txt
+            - .env.example
+        source_files: []
+        children:
+            - agent_platform
+        depends_on: []
+        related_to: []
+    agent_platform:
+        dir_name: Agent 编排平台
+        title: Agent 编排平台
+        scope:
+            - agent_platform/
+        source_files: []
+        children:
+            - agent_platform/evaluation
+            - agent_platform/memory
+            - agent_platform/orchestration
+            - agent_platform/tools
+        depends_on: []
+        related_to: []
+    agent_platform/evaluation:
+        dir_name: Agent 离线评测套件
+        title: Agent 离线评测套件
+        scope:
+            - agent_platform/evaluation/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: agent_platform/memory
+            - path: agent_platform/tools
+    agent_platform/memory:
+        dir_name: Agent 短期与长期记忆子系统
+        title: Agent 短期与长期记忆子系统
+        scope:
+            - agent_platform/memory/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: agent_platform/evaluation
+    agent_platform/orchestration:
+        dir_name: 通用 Agent 编排平台
+        title: 通用 Agent 编排平台
+        scope:
+            - agent_platform/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    agent_platform/tools:
+        dir_name: Agent 工具注册与执行框架
+        title: Agent 工具注册与执行框架
+        scope:
+            - agent_platform/tools/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: agent_platform/evaluation

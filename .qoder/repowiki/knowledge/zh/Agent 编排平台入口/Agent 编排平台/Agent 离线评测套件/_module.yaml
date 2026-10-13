@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: agent_platform/evaluation
+title: Agent 离线评测套件
+scope:
+    - agent_platform/evaluation/
+source_files: []
+depends_on: []
+related_to:
+    - path: agent_platform/memory
+    - path: agent_platform/tools
