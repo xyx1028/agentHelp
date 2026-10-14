@@ -15,6 +15,18 @@ export interface SendMessageResult {
   memory_context: string
 }
 
+export interface KnowledgeStats {
+  manageable: boolean
+  chunk_count: number
+}
+
+export interface IngestDocumentsResult {
+  ingested_files: string[]
+  added_chunks: number
+  chunk_count: number
+  errors: Record<string, string>
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -44,4 +56,21 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ content }),
     }),
+
+  knowledgeStats: () => request<KnowledgeStats>('/api/knowledge/stats'),
+
+  reindexKnowledge: () => request<{ chunk_count: number }>('/api/knowledge/reindex', { method: 'POST' }),
+
+  // 上传为 multipart/form-data，不能走 request() 的 JSON 头，单独实现。
+  uploadDocuments: async (files: FileList | File[]): Promise<IngestDocumentsResult> => {
+    const form = new FormData()
+    for (const file of Array.from(files)) {
+      form.append('files', file)
+    }
+    const response = await fetch('/api/knowledge/documents', { method: 'POST', body: form })
+    if (!response.ok) {
+      throw new Error(`${response.status} ${await response.text()}`)
+    }
+    return (await response.json()) as IngestDocumentsResult
+  },
 }

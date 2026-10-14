@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, ChatMessage, Conversation } from '../api'
 import ConversationList from '../components/ConversationList'
+import KnowledgePanel from '../components/KnowledgePanel'
 
 // 展示用消息：在后端消息基础上附加本轮召回的长期记忆与“回复中”占位。
 interface UiMessage extends ChatMessage {
@@ -127,6 +128,7 @@ export default function ChatView() {
           onSelect={(id) => navigate(`/c/${id}`)}
           onRemove={(id) => void removeConversation(id)}
         />
+        <KnowledgePanel />
         <div className="sidebar-footer">
           长期记忆跨会话共享：在任意会话里说「请记住…」，其他会话也能召回。
         </div>

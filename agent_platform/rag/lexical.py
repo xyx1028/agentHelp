@@ -1,45 +1,29 @@
-"""本地、可复现的知识检索组件。
+"""词法倒排后端：本地、可复现、零外部依赖的离线检索实现。
 
-纯内存倒排索引 RAG，不依赖网络、向量数据库或外部 embedding 服务：
-1. 启动时读取 knowledge/knowledge_base.md，按 ``## [source-id] 标题`` 解析章节并切块；
-2. 对中文双字词 / 英文整词建立「词项 → 片段下标」倒排索引；
-3. 查询时按词面重合度打分、过滤弱相关，取 top_k 个片段作为工具 observation。
+不依赖网络、向量数据库或 embedding 服务，因此服务三条路径：
+离线评测与 mock（确定性断言的基础）、未安装向量依赖时的兜底、开发期快速验证。
+流程：读取受控 Markdown（``## [source-id] 标题`` 章节）→ 句末优先切块 →
+对中文双字词 / 英文整词建「词项 → 片段下标」倒排索引 → 查询按词面重合度打分取 top_k。
 """
 
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass
 from pathlib import Path
 import re
+
+from .models import KnowledgeChunk, SearchResult
 
 
 # 章节头格式：``## [source-id] 标题``，source-id 用于在回答中引用来源。
 _SECTION_PATTERN = re.compile(r"^##\s+\[([a-z0-9][a-z0-9-]*)\]\s+(.+?)\s*$")
 # 分词单元：连续的英文/数字算一个整词，连续中文先整段取出再切双字词。
-_TOKEN_PATTERN = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]+", re.IGNORECASE)
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+|[一-鿿]+", re.IGNORECASE)
 # 切块时优先在这些句末标点处断开，避免把句子切成两半。
 _SENTENCE_BOUNDARIES = "。！？；"
 
 
-@dataclass(frozen=True)
-class KnowledgeChunk:
-    """知识库中可检索、可引用的最小文本片段。"""
-
-    source_id: str
-    title: str
-    content: str
-
-
-@dataclass(frozen=True)
-class SearchResult:
-    """一次检索命中的片段及其内部排序分数。"""
-
-    chunk: KnowledgeChunk
-    score: float
-
-
-class KnowledgeBase:
+class LexicalKnowledgeBase:
     """启动时加载 Markdown 语料，并在内存中构建只读词项索引。"""
 
     def __init__(self, source_path: Path, *, chunk_size: int = 260, max_results: int = 3):
@@ -58,10 +42,22 @@ class KnowledgeBase:
         self._term_index = self._build_term_index(self._chunks)
 
     @classmethod
-    def from_default_file(cls, *, chunk_size: int = 260, max_results: int = 3) -> "KnowledgeBase":
+    def from_default_file(
+        cls,
+        *,
+        knowledge_dir: Path | str | None = None,
+        chunk_size: int = 260,
+        max_results: int = 3,
+    ) -> "LexicalKnowledgeBase":
         """读取项目内置语料，不依赖网络、数据库或外部 embedding 服务。"""
-        source_path = Path(__file__).resolve().parent.parent / "knowledge" / "knowledge_base.md"
-        return cls(source_path, chunk_size=chunk_size, max_results=max_results)
+        # 缺省目录按包相对位置推导（agent_platform/rag/ → 项目根 /knowledge），
+        # 也可显式指定，与向量后端的 rag_knowledge_dir 配置保持一致。
+        base_dir = (
+            Path(knowledge_dir)
+            if knowledge_dir is not None
+            else Path(__file__).resolve().parents[2] / "knowledge"
+        )
+        return cls(base_dir / "knowledge_base.md", chunk_size=chunk_size, max_results=max_results)
 
     @property
     def chunk_count(self) -> int:
@@ -70,7 +66,7 @@ class KnowledgeBase:
 
     def search(self, query: str, *, top_k: int = 3) -> list[SearchResult]:
         """按中文双字词/英文词的重合度检索，并过滤弱相关的候选片段。"""
-        # 1. 查询分词；无有效词项时直接返回空，由上层决定提示未命中或凭知识回答。
+        # 1. 查询分词；无有效词项时直接返回空，由上层提示“资料不足”。
         terms = set(_extract_terms(query))
         if not terms:
             return []
@@ -102,7 +98,7 @@ class KnowledgeBase:
         if not self.source_path.is_file():
             raise FileNotFoundError(f"知识库文件不存在：{self.source_path}")
 
-        sections = _parse_sections(self.source_path.read_text(encoding="utf-8"))
+        sections = parse_sections(self.source_path.read_text(encoding="utf-8"))
         chunks: list[KnowledgeChunk] = []
         for source_id, title, content in sections:
             for part in _split_text(content, chunk_size):
@@ -121,8 +117,12 @@ class KnowledgeBase:
         return {term: tuple(indexes) for term, indexes in mutable_index.items()}
 
 
-def _parse_sections(markdown: str) -> list[tuple[str, str, str]]:
-    """解析 ``## [source-id] 标题`` 格式的受控 Markdown 语料。"""
+def parse_sections(markdown: str) -> list[tuple[str, str, str]]:
+    """解析 ``## [source-id] 标题`` 格式的受控 Markdown 语料。
+
+    这是项目语料的格式契约而非词法后端私有逻辑：向量后端（vector.py）
+    同样复用它，保证 [source:...] 引用标识在两个后端间一致。
+    """
     sections: list[tuple[str, str, str]] = []
     source_id: str | None = None
     title = ""

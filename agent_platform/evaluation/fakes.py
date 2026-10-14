@@ -12,6 +12,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.tools import tool
 
 from ..config import AgentSettings
+from ..rag import LexicalKnowledgeBase
 from ..tools import ToolRegistration, ToolRegistry, build_default_tool_registry
 
 
@@ -27,7 +28,14 @@ _SOURCE_IDS = {
 
 def create_mock_tool_registry(scenario: MockScenario, settings: AgentSettings) -> ToolRegistry:
     """复制默认注册表，只替换当前离线场景需要模拟的单个工具。"""
-    registry = build_default_tool_registry(settings)
+    # 评测/mock 固定使用词法后端：离线、确定性，与 embedding 模型下载和向量库完全解耦。
+    registry = build_default_tool_registry(
+        settings,
+        knowledge_base=LexicalKnowledgeBase.from_default_file(
+            chunk_size=settings.rag_chunk_size,
+            max_results=settings.rag_top_k,
+        ),
+    )
 
     if scenario in ("timeout", "error"):
 

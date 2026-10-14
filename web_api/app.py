@@ -1,7 +1,7 @@
-"""FastAPI 应用装配：注入 Agent 与会话注册表、挂路由、托管前端构建产物。
+"""FastAPI 应用装配：注入 Agent、会话注册表与知识库、挂路由、托管前端构建产物。
 
-create_app 是唯一装配点：依赖（AssistantAgent、ConversationRegistry）
-由入口 web.py 构造后传入，应用本身不关心模型是真实还是 mock。
+create_app 是唯一装配点：依赖（AssistantAgent、ConversationRegistry、
+可选的知识库后端）由入口 main.py 构造后传入，应用本身不关心模型是真实还是 mock。
 """
 
 from pathlib import Path
@@ -14,8 +14,10 @@ from starlette.responses import Response
 from starlette.types import Scope
 
 from agent_platform.agent import AssistantAgent
+from agent_platform.rag import KnowledgeBase
 
 from .routes.chat import build_chat_router
+from .routes.knowledge import build_knowledge_router
 from .sessions import ConversationRegistry
 
 # Vite 开发服务器来源；仅开发期跨域需要，生产单进程托管时同源、此配置无害。
@@ -42,6 +44,7 @@ def create_app(
     tenant_id: str,
     user_id: str,
     static_dir: Path | None = None,
+    knowledge_base: KnowledgeBase | None = None,
 ) -> FastAPI:
     """装配完整应用；static_dir 指向 npm run build 产物时才托管前端页面。"""
     app = FastAPI(title="Agent Platform Web API")
@@ -52,6 +55,8 @@ def create_app(
         allow_headers=["*"],
     )
     app.include_router(build_chat_router(agent, registry, tenant_id=tenant_id, user_id=user_id))
+    # 知识库管理（上传/重建）与会话路由平级；mock 装配传 None，端点如实回 409。
+    app.include_router(build_knowledge_router(knowledge_base))
     if static_dir is not None and static_dir.is_dir():
         # 挂在根路径且放在路由注册之后，让 /api 路由优先匹配。
         app.mount("/", SPAStaticFiles(directory=static_dir, html=True), name="web-ui")

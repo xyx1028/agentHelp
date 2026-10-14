@@ -22,7 +22,11 @@ Agent 根据上下文决定是否调用工具。`tools` 节点只是 LangGraph �
 agent_platform/
 ├── agent.py                    # LangGraph 编排、模型绑定与记忆组合
 ├── config.py                   # 通用 Agent / Memory 配置
-├── rag.py                      # RAG 领域实现：加载、分块、检索
+├── rag/
+│   ├── models.py               # KnowledgeChunk / SearchResult / KnowledgeBase 契约
+│   ├── lexical.py              # 词法倒排后端（评测、mock、兜底）
+│   ├── vector.py               # LlamaIndex + Chroma 向量后端（真实模式默认）
+│   └── factory.py              # 按 rag_backend 装配检索后端
 ├── weather.py                  # 天气领域客户端：地理编码、预报请求
 ├── tools/
 │   ├── registry.py             # ToolRegistration / ToolRegistry
@@ -47,11 +51,13 @@ web_api/
 ├── app.py                      # FastAPI 装配、CORS、SPA 静态托管
 ├── schemas.py                  # Pydantic 请求/响应模型
 ├── sessions.py                 # 进程内会话注册表
-└── routes/chat.py              # 会话 CRUD 与消息收发
+└── routes/
+    ├── chat.py                 # 会话 CRUD 与消息收发
+    └── knowledge.py            # 知识库上传 / 重建 / 状态
 web_ui/                         # React 18 + TypeScript + Vite 前端
 ├── src/api.ts                  # HTTP 调用唯一封装
 ├── src/views/ChatView.tsx      # 聊天主视图（会话列表 + 消息流）
-└── src/components/ConversationList.tsx
+└── src/components/             # ConversationList、KnowledgePanel 等可复用组件
 knowledge/
 └── knowledge_base.md
 ```
@@ -69,9 +75,28 @@ knowledge/
 
 新增工具只需在 `tools/` 新建适配层并在 `tools/factory.py` 注册；工具 docstring 会自动进入模型可见目录，无需修改 `AgentSettings.system_prompt`。
 
-兼容期内，旧的 `READ_ONLY_TOOLS` 仍可导入但会发出弃用警告；请改用 `build_default_tool_registry(settings).tools`。
-
 天气查询运行时使用 Open-Meteo 的地理编码和预报接口，不需要 API Key。实现依据 [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) 和 [Forecast API](https://open-meteo.com/en/docs)。
+
+## RAG 架构
+
+`KnowledgeBase` 是检索后端的 Protocol 契约，工具适配层只依赖它；两个实现可互换：
+
+| 后端 | 实现 | 使用场景 |
+| --- | --- | --- |
+| `vector`（默认） | LlamaIndex + Chroma 嵌入式向量库 + 可切换 embedding | 真实模式：语义检索，支持文档灌入 |
+| `lexical` | 内存词法倒排（中文双字 bigram + 英文整词） | 评测、mock 与无 embedding 环境兜底 |
+
+- 索引持久化在项目 `storage/chroma/`（本地文件，无独立服务进程，已 gitignore）。首次启动集合为空时会自动从 `knowledge/` 目录灌入内置语料建库，之后复用索引秒开。
+- embedding 默认本地 FastEmbed（开源 `BAAI/bge-small-zh-v1.5`，首次运行自动从 HuggingFace 下载约 100MB，之后离线可用；网络受限时设 `HF_ENDPOINT=https://hf-mirror.com` 走镜像）。配置 `RAG_EMBEDDING_PROVIDER=openai` 及 `EMBEDDING_API_KEY` / `EMBEDDING_BASE_URL` / `RAG_EMBEDDING_MODEL` 可切到 OpenAI 兼容 API（注意 DeepSeek 没有 embedding 接口）。
+- 内置受控语料 `knowledge/knowledge_base.md` 按 `## [source-id] 标题` 章节解析，两个后端共用同一 `[source:...]` 引用契约；向量检索带 `rag_min_score` 相似度下限过滤，未命中时模型会如实说明资料不足。
+- 所有 RAG 参数集中在 `AgentSettings`（`rag_backend` / `rag_chunk_size` / `rag_top_k` / `rag_min_score` / `rag_knowledge_dir` / `rag_persist_dir` 等），`.env` 可用 `RAG_*` 变量覆盖默认值。
+
+文档灌入与索引维护（支持 MD/TXT/PDF/DOCX，来源标识为文件名）：
+
+```bash
+python main.py ingest 路径/文档.pdf 路径/笔记.md   # 追加灌入向量知识库
+python main.py reindex                            # 清空索引并从 knowledge/ 重建
+```
 
 ## 记忆架构
 
@@ -142,7 +167,7 @@ python main.py evaluate
 python main.py chat --mock --user-id u-1 --conversation-id c-1 "请记住我喜欢慢节奏行程"
 ```
 
-真实模型：
+真实模型（首次运行向量 RAG 会下载约 100MB 的本地 embedding 模型，之后离线可用）：
 
 ```bash
 cp .env.example .env
@@ -167,3 +192,8 @@ python main.py serve --mock
 打开 http://127.0.0.1:8000：左侧新建/切换/删除会话，每个会话对应独立的
 `conversation_id`（短期历史互不可见）；在任意会话里说「请记住…」，
 其他会话提问时即可召回同一条长期记忆。接口文档见 http://127.0.0.1:8000/docs。
+
+侧栏底部的「知识库」面板提供文档上传与索引管理（真实模式可用，mock 下禁用）：
+「上传资料」选择 MD/TXT/PDF/Word 文件即灌入向量库并可立即提问；「重建索引」
+清空后按 knowledge/ 目录全量重建（此前上传的文档需重新灌入）。
+对应接口：`GET /api/knowledge/stats`、`POST /api/knowledge/documents`、`POST /api/knowledge/reindex`。

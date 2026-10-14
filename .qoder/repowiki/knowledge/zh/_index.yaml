@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-13T08:07:03Z"
+exported_at: "2026-10-13T11:40:17Z"
 modules:
     "":
-        dir_name: Agent 编排平台入口
-        title: Agent 编排平台入口
+        dir_name: Agent Platform 根应用（Python 入口与装配层）
+        title: Agent Platform 根应用（Python 入口与装配层）
         scope:
             - README.md
             - .gitignore
@@ -17,6 +17,8 @@ modules:
         source_files: []
         children:
             - agent_platform
+            - web_api
+            - web_ui
         depends_on: []
         related_to: []
     agent_platform:
@@ -40,9 +42,7 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: agent_platform/memory
-            - path: agent_platform/tools
+        related_to: []
     agent_platform/memory:
         dir_name: Agent 短期与长期记忆子系统
         title: Agent 短期与长期记忆子系统
@@ -51,8 +51,7 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: agent_platform/evaluation
+        related_to: []
     agent_platform/orchestration:
         dir_name: 通用 Agent 编排平台
         title: 通用 Agent 编排平台
@@ -61,7 +60,8 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: web_api
     agent_platform/tools:
         dir_name: Agent 工具注册与执行框架
         title: Agent 工具注册与执行框架
@@ -70,5 +70,25 @@ modules:
         source_files: []
         children: []
         depends_on: []
+        related_to: []
+    web_api:
+        dir_name: Agent Platform Web API（FastAPI 会话与聊天接口）
+        title: Agent Platform Web API（FastAPI 会话与聊天接口）
+        scope:
+            - web_api/
+        source_files: []
+        children: []
+        depends_on: []
         related_to:
-            - path: agent_platform/evaluation
+            - path: agent_platform/orchestration
+            - path: web_ui
+    web_ui:
+        dir_name: Agent Platform Web UI（React + Vite 前端）
+        title: Agent Platform Web UI（React + Vite 前端）
+        scope:
+            - web_ui/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_api

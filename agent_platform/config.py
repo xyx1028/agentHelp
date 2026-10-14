@@ -24,15 +24,32 @@ class AgentSettings:
     # 兼容旧版本配置；实际窗口值统一保存在 memory.short_term_max_messages。
     max_history_messages: int = 6
     tool_timeout_seconds: float = 0.3  # 所有工具的默认执行超时（秒），在执行器层生效
-    network_tool_timeout_seconds: float = 7.0  # 网络类工具（如天气）专用的执行超时，覆盖默认值
+    network_tool_timeout_seconds: float = 15.0  # 网络类工具（如天气）专用的执行超时；天气一次调用含地理编码+预报两步串行请求，须留足 2×weather_request_timeout_seconds 的余量，否则网络稍抖即整轮超时
     weather_request_timeout_seconds: float = 6.0  # 天气 HTTP 请求级超时，与工具执行超时是两层概念
     rag_top_k: int = 3  # 知识库单次检索最多返回的片段数
-    rag_chunk_size: int = 260  # 知识库切块的目标字符数（下限 80）
+    rag_chunk_size: int = 260  # 知识库切块的目标字符数（词法后端下限 80；向量后端同样按字符切块）
+    rag_backend: str = "vector"  # 检索后端：vector=LlamaIndex+Chroma 向量索引；lexical=离线词法倒排（评测/兜底）
+    rag_knowledge_dir: str = "knowledge"  # 内置语料目录：受控 knowledge_base.md 及用户直接投放的文档
+    rag_persist_dir: str = "storage/chroma"  # Chroma 向量索引的本地持久化目录（勿提交版本库）
+    rag_embedding_provider: str = "fastembed"  # embedding 提供方：fastembed=本地免费模型（首次运行自动下载）；openai=OpenAI 兼容 API
+    rag_embedding_model: str = "BAAI/bge-small-zh-v1.5"  # embedding 模型名；provider=openai 时需改为服务方模型（如 text-embedding-3-small）
+    rag_min_score: float = 0.55  # 向量检索的相似度下限（exp(-余弦距离)，越大越相关）；低于视为未命中，防止无关查询返回低分噪声
 
     def __post_init__(self) -> None:
         """校验取值，并双向同步 max_history_messages 与 memory.short_term_max_messages。"""
         if self.max_history_messages < 1:
             raise ValueError("max_history_messages 必须至少为 1。")
+        if self.rag_backend not in ("vector", "lexical"):
+            raise ValueError(f"rag_backend 只支持 vector / lexical，当前为 {self.rag_backend!r}。")
+        if self.rag_embedding_provider not in ("fastembed", "openai"):
+            raise ValueError(
+                f"rag_embedding_provider 只支持 fastembed / openai，当前为 {self.rag_embedding_provider!r}。"
+            )
+        for field_name in ("rag_knowledge_dir", "rag_persist_dir", "rag_embedding_model"):
+            if not getattr(self, field_name).strip():
+                raise ValueError(f"{field_name} 不能为空字符串。")
+        if not 0.0 <= self.rag_min_score <= 1.0:
+            raise ValueError("rag_min_score 必须在 0~1 之间（exp(-距离) 转换后的相似度取值范围）。")
         if self.memory is None:
             # 未显式传 memory 时按旧字段构造，保证新旧两条配置路径结果一致。
             object.__setattr__(

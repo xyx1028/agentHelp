@@ -5,5 +5,4 @@ scope:
     - agent_platform/tools/
 source_files: []
 depends_on: []
-related_to:
-    - path: agent_platform/evaluation
+related_to: []

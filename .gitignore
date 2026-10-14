@@ -5,3 +5,4 @@ __pycache__/
 .idea/
 web_ui/node_modules/
 web_ui/dist/
+storage/

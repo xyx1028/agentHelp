@@ -34,3 +34,25 @@ class SendMessageOut(BaseModel):
 
     answer: str
     memory_context: str
+
+
+class KnowledgeStatsOut(BaseModel):
+    """知识库管理入口状态；manageable=False（mock/词法后端）时前端禁用上传与重建。"""
+
+    manageable: bool  # 仅向量后端可管理
+    chunk_count: int  # 当前索引片段总数；不可管理时为 0
+
+
+class IngestDocumentsOut(BaseModel):
+    """一次上传灌入的结果；errors 收集单文件失败明细，部分成功也算成功。"""
+
+    ingested_files: list[str]  # 成功灌入的原始文件名
+    added_chunks: int  # 本次新增的索引片段数
+    chunk_count: int  # 灌入后的索引片段总数
+    errors: dict[str, str] = {}  # 文件名 → 失败原因
+
+
+class ReindexOut(BaseModel):
+    """索引重建结果：全量重建后的片段总数。"""
+
+    chunk_count: int
