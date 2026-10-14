@@ -29,9 +29,9 @@ class LexicalKnowledgeBase:
     def __init__(self, source_path: Path, *, chunk_size: int = 260, max_results: int = 3):
         """Fail Fast 构造：参数非法、语料缺失或解析为空都直接抛异常。"""
         if chunk_size < 80:
-            raise ValueError("rag_chunk_size 不能小于 80 个字符。")
+            raise ValueError("chunk_size 不能小于 80 个字符。")
         if max_results < 1:
-            raise ValueError("rag_top_k 必须至少为 1。")
+            raise ValueError("max_results 必须至少为 1。")
 
         self.source_path = Path(source_path)
         self._max_results = max_results
@@ -51,7 +51,7 @@ class LexicalKnowledgeBase:
     ) -> "LexicalKnowledgeBase":
         """读取项目内置语料，不依赖网络、数据库或外部 embedding 服务。"""
         # 缺省目录按包相对位置推导（agent_platform/rag/ → 项目根 /knowledge），
-        # 也可显式指定，与向量后端的 rag_knowledge_dir 配置保持一致。
+        # 也可显式指定，与 RagSettings.knowledge_dir 配置保持一致。
         base_dir = (
             Path(knowledge_dir)
             if knowledge_dir is not None

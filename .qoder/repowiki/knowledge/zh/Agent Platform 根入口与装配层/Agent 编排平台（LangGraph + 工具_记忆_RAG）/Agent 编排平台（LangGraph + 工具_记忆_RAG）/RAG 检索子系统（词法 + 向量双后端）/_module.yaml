@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: agent_platform/orchestration/rag
+title: RAG 检索子系统（词法 + 向量双后端）
+scope:
+    - agent_platform/rag/
+source_files: []
+depends_on: []
+related_to: []

@@ -7,29 +7,28 @@ build_knowledge_base 是后端选择的唯一入口：vector（LlamaIndex + Chro
 
 from __future__ import annotations
 
-from ..config import AgentSettings
 from .lexical import LexicalKnowledgeBase
-from .models import KnowledgeBase
+from .models import KnowledgeBase, RagSettings
 from .vector import LlamaIndexKnowledgeBase
 
 
 def build_knowledge_base(
-    settings: AgentSettings,
+    settings: RagSettings,
     *,
     embedding_api_key: str | None = None,
     embedding_base_url: str | None = None,
     force_rebuild: bool = False,
 ) -> KnowledgeBase:
-    """按 settings.rag_backend 装配检索后端；embedding 机密由入口显式注入。
+    """按 settings.backend 装配检索后端；embedding 机密由入口显式注入。
 
     force_rebuild 仅对 vector 后端生效（清空集合后重建索引）；lexical 每次
     构造都从语料全量加载，天然等价于重建，故该参数对它无意义。
     """
-    if settings.rag_backend == "lexical":
+    if settings.backend == "lexical":
         return LexicalKnowledgeBase.from_default_file(
-            knowledge_dir=settings.rag_knowledge_dir,
-            chunk_size=settings.rag_chunk_size,
-            max_results=settings.rag_top_k,
+            knowledge_dir=settings.knowledge_dir,
+            chunk_size=settings.chunk_size,
+            max_results=settings.top_k,
         )
     return LlamaIndexKnowledgeBase(
         settings,

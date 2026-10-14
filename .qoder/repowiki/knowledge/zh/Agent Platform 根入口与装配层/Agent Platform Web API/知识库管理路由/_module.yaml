@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: web_api/routes
+title: 知识库管理路由
+scope:
+    - web_api/routes/knowledge.py
+source_files: []
+depends_on: []
+related_to: []

@@ -30,10 +30,10 @@ def create_mock_tool_registry(scenario: MockScenario, settings: AgentSettings) -
     """复制默认注册表，只替换当前离线场景需要模拟的单个工具。"""
     # 评测/mock 固定使用词法后端：离线、确定性，与 embedding 模型下载和向量库完全解耦。
     registry = build_default_tool_registry(
-        settings,
+        settings.tools,
         knowledge_base=LexicalKnowledgeBase.from_default_file(
-            chunk_size=settings.rag_chunk_size,
-            max_results=settings.rag_top_k,
+            chunk_size=settings.rag.chunk_size,
+            max_results=settings.rag.top_k,
         ),
     )
 
@@ -58,7 +58,7 @@ def create_mock_tool_registry(scenario: MockScenario, settings: AgentSettings) -
 
         return registry.replace(
             "get_weather_forecast",
-            ToolRegistration(get_weather_forecast, timeout_seconds=settings.network_tool_timeout_seconds),
+            ToolRegistration(get_weather_forecast, timeout_seconds=settings.tools.network_timeout_seconds),
         )
 
     return registry

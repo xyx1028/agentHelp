@@ -14,6 +14,7 @@ from langgraph.prebuilt import tools_condition
 
 from .config import AgentSettings
 from .memory import AgentMemory, MemoryScope
+from .rag import build_knowledge_base
 from .tools import ReadOnlyToolExecutor, ToolRegistry, build_default_tool_registry
 
 
@@ -53,7 +54,12 @@ class AssistantAgent:
         if tool_registry is not None:
             self.tool_registry = tool_registry
         else:
-            self.tool_registry = build_default_tool_registry(self.settings)
+            # 未注入注册表时按子系统 Settings 现场装配默认组合：
+            # 知识库由 rag.factory 装配，工具组合根只负责持有它。
+            self.tool_registry = build_default_tool_registry(
+                self.settings.tools,
+                knowledge_base=build_knowledge_base(self.settings.rag),
+            )
 
         # 绑定工具 Schema 后，模型才能在回复中发起结构化工具调用。
         self._model = self.tool_registry.bind_model(model)
@@ -61,7 +67,7 @@ class AssistantAgent:
         self.memory_scope = memory_scope or MemoryScope.local()
         # 系统 Prompt 启动时按当前工具目录渲染一次，之后随实例复用。
         self._system_prompt = self.settings.build_system_prompt(self.tool_registry.prompt_catalog())
-        self._tool_executor = ReadOnlyToolExecutor(self.tool_registry, self.settings.tool_timeout_seconds)
+        self._tool_executor = ReadOnlyToolExecutor(self.tool_registry, self.settings.tools.default_timeout_seconds)
         self._graph = self._build_graph()
 
     @property

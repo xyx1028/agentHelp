@@ -19,7 +19,7 @@ from agent_platform.agent import AssistantAgent
 from agent_platform.config import AgentSettings
 from agent_platform.evaluation import create_mock_model, create_mock_tool_registry, run_evaluation
 from agent_platform.memory import AgentMemory, MemoryScope
-from agent_platform.rag import KnowledgeBase, LlamaIndexKnowledgeBase, build_knowledge_base
+from agent_platform.rag import KnowledgeBase, LlamaIndexKnowledgeBase, RagSettings, build_knowledge_base
 from agent_platform.tools import build_default_tool_registry
 
 # 前端构建产物目录；未执行 npm run build 时 serve 仅提供 /api，不托管页面。
@@ -48,21 +48,23 @@ def create_real_model():
 
 
 def _load_settings() -> AgentSettings:
-    """构造运行配置：.env 中的 RAG_* 变量覆盖 AgentSettings 默认值。
+    """构造运行配置：.env 中的 RAG_* 变量覆盖 RagSettings 默认值。
 
     仅覆盖非机密项；embedding 的 key 与端点在装配知识库时单独读取注入，
     避免机密进入可打印的配置对象。
     """
     overrides = {}
-    for env_key, field in (
-        ("RAG_BACKEND", "rag_backend"),
-        ("RAG_EMBEDDING_PROVIDER", "rag_embedding_provider"),
-        ("RAG_EMBEDDING_MODEL", "rag_embedding_model"),
+    for env_key, field_name in (
+        ("RAG_BACKEND", "backend"),
+        ("RAG_EMBEDDING_PROVIDER", "embedding_provider"),
+        ("RAG_EMBEDDING_MODEL", "embedding_model"),
     ):
         value = os.getenv(env_key)
         if value:
-            overrides[field] = value
-    return replace(AgentSettings(), **overrides) if overrides else AgentSettings()
+            overrides[field_name] = value
+    # 先构造子系统配置再组合：RagSettings 的 Fail Fast 校验在 replace 时即生效。
+    rag_settings = replace(RagSettings(), **overrides) if overrides else RagSettings()
+    return AgentSettings(rag=rag_settings)
 
 
 def build_agent(args: argparse.Namespace) -> tuple[AssistantAgent, KnowledgeBase | None]:
@@ -82,11 +84,11 @@ def build_agent(args: argparse.Namespace) -> tuple[AssistantAgent, KnowledgeBase
     else:
         # 真实模式按 RAG_BACKEND 装配检索后端；embedding 机密仅在此处从 .env 读取注入。
         knowledge_base = build_knowledge_base(
-            settings,
+            settings.rag,
             embedding_api_key=os.getenv("EMBEDDING_API_KEY"),
             embedding_base_url=os.getenv("EMBEDDING_BASE_URL"),
         )
-        tool_registry = build_default_tool_registry(settings, knowledge_base=knowledge_base)
+        tool_registry = build_default_tool_registry(settings.tools, knowledge_base=knowledge_base)
     model = create_mock_model(args.mock_scenario) if args.mock else create_real_model()
     # 记忆作用域决定短期历史与长期偏好的隔离边界；缺省标识仅进程内隔离。
     memory_scope = MemoryScope(
@@ -175,7 +177,7 @@ def main() -> None:
     # 索引维护同样是短路流程：灌入/重建后打印索引规模并退出，不进入问答。
     if args.command in ("ingest", "reindex"):
         knowledge_base = build_knowledge_base(
-            _load_settings(),
+            _load_settings().rag,
             embedding_api_key=os.getenv("EMBEDDING_API_KEY"),
             embedding_base_url=os.getenv("EMBEDDING_BASE_URL"),
             force_rebuild=args.command == "reindex",

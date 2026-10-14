@@ -8,10 +8,12 @@ create_rag_tool / create_weather_tool 等适配函数属内部细节，不对外
 from .executor import ReadOnlyToolExecutor
 from .factory import build_default_tool_registry
 from .registry import ToolRegistration, ToolRegistry
+from .settings import ToolSettings
 
 __all__ = [
     "ReadOnlyToolExecutor",
     "ToolRegistration",
     "ToolRegistry",
+    "ToolSettings",
     "build_default_tool_registry",
 ]

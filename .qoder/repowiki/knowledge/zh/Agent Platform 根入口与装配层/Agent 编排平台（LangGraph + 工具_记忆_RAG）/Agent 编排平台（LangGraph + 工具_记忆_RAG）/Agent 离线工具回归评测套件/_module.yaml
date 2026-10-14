@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: agent_platform/orchestration/evaluation
+title: Agent 离线工具回归评测套件
+scope:
+    - agent_platform/evaluation/
+source_files: []
+depends_on: []
+related_to: []

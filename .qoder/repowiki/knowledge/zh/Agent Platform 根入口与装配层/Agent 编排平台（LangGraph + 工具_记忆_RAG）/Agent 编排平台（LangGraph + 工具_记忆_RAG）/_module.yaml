@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: agent_platform/orchestration
+title: Agent 编排平台（LangGraph + 工具/记忆/RAG）
+scope:
+    - agent_platform/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_api

@@ -21,17 +21,18 @@ Agent 根据上下文决定是否调用工具。`tools` 节点只是 LangGraph �
 ```text
 agent_platform/
 ├── agent.py                    # LangGraph 编排、模型绑定与记忆组合
-├── config.py                   # 通用 Agent / Memory 配置
+├── config.py                   # 组合式应用配置（聚合 memory/rag/tools Settings）
 ├── rag/
-│   ├── models.py               # KnowledgeChunk / SearchResult / KnowledgeBase 契约
+│   ├── models.py               # 检索数据模型、KnowledgeBase 契约、RagSettings
 │   ├── lexical.py              # 词法倒排后端（评测、mock、兜底）
 │   ├── vector.py               # LlamaIndex + Chroma 向量后端（真实模式默认）
-│   └── factory.py              # 按 rag_backend 装配检索后端
+│   └── factory.py              # 按 RagSettings.backend 装配检索后端
 ├── weather.py                  # 天气领域客户端：地理编码、预报请求
 ├── tools/
 │   ├── registry.py             # ToolRegistration / ToolRegistry
 │   ├── factory.py              # 默认工具唯一注册位置
 │   ├── executor.py             # 白名单、超时和错误处理
+│   ├── settings.py             # ToolSettings：执行与网络请求超时预算
 │   ├── rag.py                  # RAG Tool 适配层
 │   └── weather.py              # 天气 Tool 适配层
 ├── memory/
@@ -88,8 +89,8 @@ knowledge/
 
 - 索引持久化在项目 `storage/chroma/`（本地文件，无独立服务进程，已 gitignore）。首次启动集合为空时会自动从 `knowledge/` 目录灌入内置语料建库，之后复用索引秒开。
 - embedding 默认本地 FastEmbed（开源 `BAAI/bge-small-zh-v1.5`，首次运行自动从 HuggingFace 下载约 100MB，之后离线可用；网络受限时设 `HF_ENDPOINT=https://hf-mirror.com` 走镜像）。配置 `RAG_EMBEDDING_PROVIDER=openai` 及 `EMBEDDING_API_KEY` / `EMBEDDING_BASE_URL` / `RAG_EMBEDDING_MODEL` 可切到 OpenAI 兼容 API（注意 DeepSeek 没有 embedding 接口）。
-- 内置受控语料 `knowledge/knowledge_base.md` 按 `## [source-id] 标题` 章节解析，两个后端共用同一 `[source:...]` 引用契约；向量检索带 `rag_min_score` 相似度下限过滤，未命中时模型会如实说明资料不足。
-- 所有 RAG 参数集中在 `AgentSettings`（`rag_backend` / `rag_chunk_size` / `rag_top_k` / `rag_min_score` / `rag_knowledge_dir` / `rag_persist_dir` 等），`.env` 可用 `RAG_*` 变量覆盖默认值。
+- 内置受控语料 `knowledge/knowledge_base.md` 按 `## [source-id] 标题` 章节解析，两个后端共用同一 `[source:...]` 引用契约；向量检索带 `min_score` 相似度下限过滤，未命中时模型会如实说明资料不足。
+- RAG 参数集中在 `RagSettings`（`agent_platform/rag/models.py`，由 `AgentSettings.rag` 组合引用），`.env` 可用 `RAG_*` 变量覆盖默认值；工具与天气超时则在 `ToolSettings`（`agent_platform/tools/settings.py`，`AgentSettings.tools`）。
 
 文档灌入与索引维护（支持 MD/TXT/PDF/DOCX，来源标识为文件名）：
 

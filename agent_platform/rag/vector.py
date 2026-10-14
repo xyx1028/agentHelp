@@ -1,8 +1,8 @@
 """向量后端：LlamaIndex + Chroma 的本地语义检索实现，真实模式的默认后端。
 
 索引生命周期（见 LlamaIndexKnowledgeBase.__init__）：
-1. 打开 rag_persist_dir 下的 Chroma 嵌入式集合（本地文件，无独立服务进程）；
-2. 集合为空时从 rag_knowledge_dir 全量灌入内置语料并构建索引（此时才调用 embedding）；
+1. 打开 persist_dir 下的 Chroma 嵌入式集合（本地文件，无独立服务进程）；
+2. 集合为空时从 knowledge_dir 全量灌入内置语料并构建索引（此时才调用 embedding）；
 3. 集合非空则直接复用已持久化的向量，启动零 embedding 调用。
 embedding 提供方可切换：fastembed（本地免费，首次运行自动下载开源模型）或
 openai（OpenAI 兼容 API，机密由入口经构造函数注入而非读取环境变量）。
@@ -18,9 +18,8 @@ import shutil
 import threading
 from typing import Any
 
-from ..config import AgentSettings
 from .lexical import parse_sections
-from .models import KnowledgeChunk, SearchResult
+from .models import KnowledgeChunk, RagSettings, SearchResult
 
 # Chroma 集合名；单一知识库场景下固定即可。
 _COLLECTION_NAME = "knowledge"
@@ -35,7 +34,7 @@ class LlamaIndexKnowledgeBase:
 
     def __init__(
         self,
-        settings: AgentSettings,
+        settings: RagSettings,
         *,
         embedding_api_key: str | None = None,
         embedding_base_url: str | None = None,
@@ -44,7 +43,7 @@ class LlamaIndexKnowledgeBase:
         """Fail Fast 构造：依赖缺失、语料为空、embedding 配置不全都直接抛异常。
 
         force_rebuild=True 时先删除已有集合再重建（服务 --reindex 场景）；
-        embedding 机密经参数注入，保持配置流向显式、可打印的 AgentSettings 不含机密。
+        embedding 机密经参数注入，保持配置流向显式、可打印的 RagSettings 不含机密。
         """
         # llama-index / chromadb 体量大且评测走词法后端不需要，故惰性导入；
         # 缺失时把原生 ImportError 转成可操作的指引而非堆栈。
@@ -64,11 +63,11 @@ class LlamaIndexKnowledgeBase:
         )
         # 切块在索引构建时完成；ingest 追加时复用同一 splitter，保证全库块尺寸一致。
         self._splitter = SentenceSplitter(
-            chunk_size=settings.rag_chunk_size,
-            chunk_overlap=max(20, settings.rag_chunk_size // 6),  # 约 15% 重叠，缓解边界语义截断
+            chunk_size=settings.chunk_size,
+            chunk_overlap=max(20, settings.chunk_size // 6),  # 约 15% 重叠，缓解边界语义截断
         )
-        self._max_results = settings.rag_top_k
-        self._min_score = settings.rag_min_score
+        self._max_results = settings.top_k
+        self._min_score = settings.min_score
         # 管理操作（ingest/rebuild）与检索互斥：Web 端与 Agent 共享同一实例，
         # 避免重建过程中检索读到半个索引。
         self._lock = threading.RLock()
@@ -94,7 +93,7 @@ class LlamaIndexKnowledgeBase:
                 except Exception:
                     pass  # 关闭失败不阻断重建；进程退出时资源自会回收
 
-            persist_dir = Path(self._settings.rag_persist_dir)
+            persist_dir = Path(self._settings.persist_dir)
             if force_rebuild and persist_dir.exists():
                 # 物理清空整个索引目录：Chroma 的 delete_collection 只做逻辑删除，
                 # 会残留 HNSW segment 目录，每 reindex 一次就多一份孤儿文件。
@@ -103,7 +102,7 @@ class LlamaIndexKnowledgeBase:
                     shutil.rmtree(persist_dir)
                 else:
                     raise ValueError(
-                        f"rag_persist_dir 指向的目录不像 Chroma 索引目录，拒绝清空：{persist_dir}"
+                        f"persist_dir 指向的目录不像 Chroma 索引目录，拒绝清空：{persist_dir}"
                     )
             persist_dir.mkdir(parents=True, exist_ok=True)
             self._client = chromadb.PersistentClient(path=str(persist_dir))
@@ -116,10 +115,10 @@ class LlamaIndexKnowledgeBase:
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
             if self._collection.count() == 0:
-                documents = _load_knowledge_documents(Path(self._settings.rag_knowledge_dir))
+                documents = _load_knowledge_documents(Path(self._settings.knowledge_dir))
                 if not documents:
                     raise ValueError(
-                        f"知识库目录没有可索引的文档：{Path(self._settings.rag_knowledge_dir).resolve()}"
+                        f"知识库目录没有可索引的文档：{Path(self._settings.knowledge_dir).resolve()}"
                     )
                 self._index = VectorStoreIndex.from_documents(
                     documents,
@@ -200,19 +199,19 @@ class LlamaIndexKnowledgeBase:
 
 
 def _build_embed_model(
-    settings: AgentSettings,
+    settings: RagSettings,
     *,
     api_key: str | None,
     base_url: str | None,
 ) -> Any:
     """按 provider 装配 embedding 模型；各实现惰性导入，避免互相牵连依赖。"""
-    provider = settings.rag_embedding_provider
+    provider = settings.embedding_provider
     if provider == "fastembed":
         # 本地免费方案：首次运行自动从 HuggingFace 下载模型到用户缓存目录，
         # 之后离线可用；网络受限时设 HF_ENDPOINT=https://hf-mirror.com 走镜像。
         from llama_index.embeddings.fastembed import FastEmbedEmbedding
 
-        return FastEmbedEmbedding(model_name=settings.rag_embedding_model)
+        return FastEmbedEmbedding(model_name=settings.embedding_model)
     if provider == "openai":
         # OpenAI 兼容 API（含各类转发/国产服务）；注意 DeepSeek 没有 embedding 接口。
         from llama_index.embeddings.openai import OpenAIEmbedding
@@ -220,11 +219,11 @@ def _build_embed_model(
         if not api_key:
             raise ValueError("RAG_EMBEDDING_PROVIDER=openai 需要在 .env 中配置 EMBEDDING_API_KEY。")
         return OpenAIEmbedding(
-            model=settings.rag_embedding_model,
+            model=settings.embedding_model,
             api_key=api_key,
             api_base=base_url,  # None 时走 SDK 默认官方地址
         )
-    # config 已对枚举 Fail Fast 校验，此处为防御性兜底。
+    # RagSettings 已对枚举 Fail Fast 校验，此处为防御性兜底。
     raise ValueError(f"未知 embedding 提供方：{provider}")
 
 

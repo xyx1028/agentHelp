@@ -1,33 +1,32 @@
 """默认工具组合；后续新增工具只在此处显式注册。
 
-这是工具系统的「组合根」：统一构造领域客户端（知识库、天气客户端），
+这是工具系统的「组合根」：统一持有领域客户端（知识库、天气客户端），
 经各自适配层包成 LangChain 工具后注册进 ToolRegistry。
-knowledge_base / weather_client 为可选注入点，便于单元测试替换为 mock。
+knowledge_base 为必填注入（检索后端的装配是 rag.factory 的职责，此处不越权），
+weather_client 为可选注入点，便于单元测试替换为 mock。
 """
 
 from __future__ import annotations
 
-from ..config import AgentSettings
-from ..rag import KnowledgeBase, build_knowledge_base
+from ..rag import KnowledgeBase
 from ..weather import OpenMeteoWeatherClient
 from .rag import create_rag_tool
 from .registry import ToolRegistry
+from .settings import ToolSettings
 from .weather import create_weather_tool
 
 
 def build_default_tool_registry(
-    settings: AgentSettings,
+    settings: ToolSettings,
     *,
-    knowledge_base: KnowledgeBase | None = None,
+    knowledge_base: KnowledgeBase,
     weather_client: OpenMeteoWeatherClient | None = None,
 ) -> ToolRegistry:
     """构造当前应用的工具集合；模型绑定、Prompt 和执行器共用同一个注册表。"""
-    # 缺省时按 settings.rag_backend 装配检索后端（真实模式默认向量索引），测试则注入替身。
-    knowledge_base = knowledge_base or build_knowledge_base(settings)
     weather_client = weather_client or OpenMeteoWeatherClient(settings.weather_request_timeout_seconds)
     return ToolRegistry((
-        # 本地检索工具：不设专用超时，走执行器默认的 0.3s 兜底。
+        # 本地检索工具：不设专用超时，走执行器默认超时兜底。
         create_rag_tool(knowledge_base),
         # 天气工具：网络调用耗时长，标记专用超时覆盖默认值。
-        create_weather_tool(weather_client, timeout_seconds=settings.network_tool_timeout_seconds),
+        create_weather_tool(weather_client, timeout_seconds=settings.network_timeout_seconds),
     ))

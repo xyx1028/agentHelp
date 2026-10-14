@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: agent_platform/orchestration/core_orchestration
+title: Agent 编排核心与天气工具
+scope:
+    - agent_platform/agent.py
+    - agent_platform/config.py
+    - agent_platform/weather.py
+source_files: []
+depends_on: []
+related_to: []
