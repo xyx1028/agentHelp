@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: agent_platform/memory
-title: Agent 短期与长期记忆子系统
-scope:
-    - agent_platform/memory/
-source_files: []
-depends_on: []
-related_to: []
